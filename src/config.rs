@@ -128,6 +128,14 @@ mod tests {
     use super::*;
     use std::fs;
 
+    /// Isolate tests from the host's `~/.gitconfig` and system config.
+    /// Safe to call from parallel tests — all tests set the same values.
+    fn isolate_git_config() {
+        std::env::set_var("GIT_CONFIG_GLOBAL", "/dev/null");
+        std::env::set_var("GIT_CONFIG_SYSTEM", "/dev/null");
+        std::env::set_var("GIT_CONFIG_NOSYSTEM", "1");
+    }
+
     fn git(dir: &Path, args: &[&str]) {
         let output = Command::new("git")
             .args(args)
@@ -144,6 +152,7 @@ mod tests {
     }
 
     fn init_repo(path: &Path) {
+        isolate_git_config();
         fs::create_dir_all(path).unwrap();
         git(path, &["init"]);
         git(path, &["config", "user.email", "t@t"]);
