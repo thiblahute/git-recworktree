@@ -21,9 +21,17 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Create a worktree and sibling worktrees for every nested repo.
+    ///
+    /// The worktree is created at PATH; the branch defaults to the
+    /// basename of PATH (e.g. `git recworktree add ../foo` creates a
+    /// worktree at ../foo on branch `foo`).
     Add {
-        /// Branch name for the new worktree.
-        branch: String,
+        /// Where to create the worktree.
+        path: PathBuf,
+
+        /// Override the branch name (default: basename of PATH).
+        #[arg(long, short)]
+        branch: Option<String>,
 
         /// Path to the main repository (default: current directory).
         #[arg(long, default_value = ".")]
@@ -32,11 +40,6 @@ enum Commands {
         /// Base ref to branch from if the branch doesn't exist.
         #[arg(long, default_value = "origin/main")]
         base: String,
-
-        /// Directory where the worktree will be created.
-        /// Default: sibling of `repo` with the branch as basename.
-        #[arg(long)]
-        directory: Option<PathBuf>,
 
         /// Copy this file from the main repo into the new worktree.
         /// May be repeated.
@@ -61,7 +64,7 @@ enum Commands {
         #[arg(long)]
         no_submodules: bool,
 
-        /// Don't read .recworktree.conf from the repo root.
+        /// Don't read recworktree.* values from git config.
         #[arg(long)]
         no_config: bool,
     },
@@ -86,10 +89,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     match cli.command {
         Commands::Add {
+            path,
             branch,
             repo,
             base,
-            directory,
             copy_files,
             copy_dirs,
             skip_dirs,
@@ -102,12 +105,21 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             }
             let repo = repo.canonicalize()?;
 
-            let worktree_dir = directory.unwrap_or_else(|| {
-                repo.parent()
-                    .map(|p| p.to_path_buf())
-                    .unwrap_or_else(|| PathBuf::from("."))
-            });
-            let worktree_path = worktree_dir.join(&branch);
+            let branch = match branch {
+                Some(b) => b,
+                None => path
+                    .file_name()
+                    .ok_or_else(|| {
+                        format!(
+                            "cannot derive branch name from path '{}' — pass --branch",
+                            path.display()
+                        )
+                    })?
+                    .to_string_lossy()
+                    .into_owned(),
+            };
+
+            let worktree_path = path;
 
             let mut b = WorktreeBuilder::new(&repo, &worktree_path, &branch).base_branch(&base);
             for f in &copy_files {

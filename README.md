@@ -22,11 +22,16 @@ Once the `git-recworktree` binary is in `$PATH`, git invokes it as
 ## Usage
 
 ```
-git recworktree add feature-x              # sibling of CWD
-git recworktree add feature-x --repo /path/to/repo
+git recworktree add ../feature-x                      # branch = "feature-x"
+git recworktree add ../worktrees/feature-x            # branch = "feature-x"
+git recworktree add /tmp/wip --branch experimental    # explicit branch
+git recworktree add ../feature-x --repo /path/to/repo
 git recworktree remove ../worktrees/feature-x --force
 git recworktree remove ../worktrees/feature-x --delete-branch
 ```
+
+The branch name defaults to the basename of `PATH`; pass `--branch`
+(`-b`) to override. `--repo` defaults to the current directory.
 
 Optional flags:
 
