@@ -1,0 +1,24 @@
+[package]
+name = "git-recworktree"
+version = "0.1.0"
+edition = "2021"
+description = "Recursive git worktrees: creates sibling worktrees for nested independent git repos (meson subprojects, vendored repos, etc.) and shares LFS storage."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/thiblahute/git-recworktree"
+keywords = ["git", "worktree", "monorepo", "subprojects", "meson"]
+categories = ["command-line-utilities", "development-tools"]
+
+[lib]
+name = "git_recworktree"
+path = "src/lib.rs"
+
+[[bin]]
+name = "git-recworktree"
+path = "src/bin/git-recworktree.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+thiserror = "1"
+
+[dev-dependencies]
+tempfile = "3"
