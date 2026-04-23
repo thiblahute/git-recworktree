@@ -233,11 +233,20 @@ pub(crate) fn create_worktree(b: WorktreeBuilder<'_>) -> Result<()> {
         setup_submodules(repo_path, &worktree_path, branch_name, b._share_lfs())?;
     }
 
-    // Copy configured files / dirs from the main repo.
+    // Copy configured files / dirs from the main repo. Entries auto-detect
+    // file vs directory at apply time.
     for rel in b._copy_files() {
         let src = repo_path.join(rel);
-        if src.exists() {
-            let dst = worktree_path.join(rel);
+        if !src.exists() {
+            continue;
+        }
+        let dst = worktree_path.join(rel);
+        if src.is_dir() {
+            eprintln!("  Copying {}/ to worktree...", rel);
+            if let Err(e) = copy_dir_recursive(&src, &dst) {
+                eprintln!("  Warning: Failed to copy {}/: {}", rel, e);
+            }
+        } else {
             if let Some(parent) = dst.parent() {
                 let _ = std::fs::create_dir_all(parent);
             }

@@ -60,6 +60,10 @@ enum Commands {
         /// Don't initialize submodules in the new worktree.
         #[arg(long)]
         no_submodules: bool,
+
+        /// Don't read .recworktree.conf from the repo root.
+        #[arg(long)]
+        no_config: bool,
     },
 
     /// Remove a worktree and all its nested worktrees.
@@ -91,6 +95,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             skip_dirs,
             no_lfs_share,
             no_submodules,
+            no_config,
         } => {
             if !repo.exists() {
                 return Err(format!("repo not found: {}", repo.display()).into());
@@ -119,6 +124,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             }
             if no_submodules {
                 b = b.init_submodules(false);
+            }
+            if !no_config {
+                b = b.load_repo_config()?;
             }
 
             b.create()?;

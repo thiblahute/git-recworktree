@@ -39,6 +39,50 @@ Optional flags:
 - `--no-lfs-share` — don't point submodule `lfs.storage` at the main repo's
   LFS cache.
 - `--no-submodules` — skip `git submodule update --init`.
+- `--no-config` — don't read `recworktree.*` values from git config.
+
+## Configuration via `git config`
+
+`git-recworktree` reads its config from git itself, so values can live in
+`.git/config` (per-repo), `~/.gitconfig` (per-user), or any `include.path`
+git already honors. It's automatic — use `--no-config` to opt out.
+
+Keys:
+
+| Key | Cardinality | Format | Meaning |
+|-----|-------------|--------|---------|
+| `recworktree.copy` | multi | relative path | File or directory under the repo root to copy into each new worktree. File vs. dir is auto-detected. |
+| `recworktree.external` | multi | `SRC:DST` | Absolute-path source copied to the relative destination inside the worktree. Good for per-user machine files. |
+| `recworktree.skipDir` | multi | name | Extra directory name excluded from the nested-repo walk. |
+
+Setting them:
+
+```sh
+# Per-repo
+git config --add recworktree.copy NOTES.md
+git config --add recworktree.copy .envrc
+git config --add recworktree.copy .vscode
+git config --add recworktree.skipDir yolotarget
+
+# Per-user (good for machine-specific paths)
+git config --global --add recworktree.external \
+    "$HOME/.local/share/meson/native/gst.native:gst.native"
+```
+
+Or write them directly:
+
+```ini
+[recworktree]
+    copy = NOTES.md
+    copy = .envrc
+    copy = .vscode
+    external = /home/me/.local/share/meson/native/gst.native:gst.native
+    skipDir = yolotarget
+```
+
+Values *extend* whatever was passed on the command line or configured
+via the builder; nothing is replaced. Missing source files are skipped
+silently so the same config works across machines.
 
 ## Library
 
@@ -54,6 +98,7 @@ WorktreeBuilder::new(&repo, &worktree_path, "feature-x")
     .base_branch("origin/main")
     .copy_file("NOTES.md")
     .copy_dir(".vscode")
+    .load_repo_config()?   // layer repo's .recworktree.conf on top
     .create()?;
 ```
 

@@ -32,15 +32,18 @@
 //! .base_branch("origin/main")
 //! .copy_file("NOTES.md")
 //! .copy_dir(".vscode")
+//! .load_repo_config().unwrap()   // also read <repo>/.recworktree.conf
 //! .create()
 //! .unwrap();
 //! ```
 
+mod config;
 mod error;
 mod info;
 mod nested;
 mod ops;
 
+pub use config::RepoConfig;
 pub use error::{Error, Result};
 pub use info::WorktreeInfo;
 pub use nested::{find_nested_git_repos, find_nested_worktrees, NestedGitRepo};
@@ -104,6 +107,8 @@ impl<'a> WorktreeBuilder<'a> {
     }
 
     /// Copy a file from the main repo into the new worktree (relative path).
+    /// If the source turns out to be a directory at apply time, it is
+    /// copied recursively.
     pub fn copy_file(mut self, path: impl Into<String>) -> Self {
         self.copy_files.push(path.into());
         self
@@ -113,6 +118,24 @@ impl<'a> WorktreeBuilder<'a> {
     pub fn copy_dir(mut self, path: impl Into<String>) -> Self {
         self.copy_dirs.push(path.into());
         self
+    }
+
+    /// Load `<repo>/.recworktree.conf` and apply its entries.
+    ///
+    /// Silent no-op if the file doesn't exist. Entries *extend* what is
+    /// already on the builder — they don't replace.
+    ///
+    /// See [`RepoConfig`] for the file format.
+    pub fn load_repo_config(mut self) -> Result<Self> {
+        let cfg = RepoConfig::load(self.repo_path)?;
+        for p in cfg.copies {
+            self.copy_files.push(p.to_string_lossy().into_owned());
+        }
+        for (src, dst) in cfg.externals {
+            self.external_files.push((src, dst));
+        }
+        self.skip_dirs.extend(cfg.skip_dirs);
+        Ok(self)
     }
 
     /// Copy an external file (absolute path) into the worktree at a
